@@ -4,8 +4,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="xSLHA",
-    version="0.0.1",
+    name="xslha",
+    version="0.1",
     author="Florian Staub",
     author_email="florian.staub@gmail.com",
     description="A python package to read (big/many) SLHA files",
@@ -14,8 +14,10 @@ setuptools.setup(
     url="https://github.com/fstaub/xSLHA",
     packages=setuptools.find_packages(),
     classifiers=[
-        "Programming Language :: Python :: 2,3",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 2",
         "License :: OSI Approved :: MIT License",
-        "Operating System :: Linux, MacOS",
+        "Operating System :: POSIX :: Linux",
+        "Operating System :: MacOS"
     ],
 )

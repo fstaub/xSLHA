@@ -1,1 +1,1 @@
-name = "xSLHA"
+name = "xslha"
