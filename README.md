@@ -1,4 +1,5 @@
 # xSLHA
+``xSLHA`` is a ``python`` parser for files written in the SLHA format. It is optimised for fast reading of a large sample of files.
 
 ## Installation
 The package can be installed via
@@ -62,6 +63,47 @@ Reading many spectrum files can be time consuming. However, many of the informat
 list_spc_fast=xslha.read_dir("~/Documents/spc1000",entries=["# m0","# m12","# hh_1"])`
 ```
 ``entries`` defines a list of strings which can be used to extract the necessary lines from the SLHA file by using ``grep``. The speed improvement can be easily an order of magnitude if only some entries from a SLHA file are actually needed.
+
+### Speed
+The impact of this optimisation for reading 10000 files is as follows:
+```
+%%time
+list_spc=xslha.read_dir("~/Documents/spc1000")
+
+CPU times: user 5.05 s, sys: 105 ms, total: 5.15 s
+Wall time: 5.51 s
+```
+compared to 
+```
+%%time
+list_spc_fast=xslha.read_dir("~/Documents/spc1000",entries=["# m0","# m12","# hh_1"])
+
+CPU times: user 147 ms, sys: 132 ms, total: 280 ms
+Wall time: 917 ms
+```
+One can also compares this with other available python parser:
+* ``pylha``:
+```
+%%time
+all_spc=[]
+for filename in os.listdir("~/Documents/spc1000/"): 
+  with open("~/Documents/spc1000/"+filename) as f:
+    input=f.read()
+    all_spc.append(pylha.load(input))
+    
+CPU times: user 21.5 s, sys: 174 ms, total: 21.7 s
+Wall time: 21.7 s    
+```
+* ``pyslha``{
+```
+%%time
+all_spc=[]
+for filename in os.listdir("~/Documents/spc1000/"): 
+    all_spc.append(pyslha.read(("~/Documents/spc1000/"+filename)))
+
+CPU times: user 13.3 s, sys: 152 ms, total: 13.5 s
+Wall time: 13.5 s
+ ```
 
 ## Reading spectra stored in one file
 Another common approach for saving spectrum files is to produce one huge file in which the different spectra are separated by a keyword. ``xSLHA`` can read such files by setting the optional argument ``separator`` for ``read``:
