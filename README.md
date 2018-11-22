@@ -143,6 +143,6 @@ out_blocks=collections.OrderedDict([
               ('MODSEL',collections.OrderedDict([('1', 1), ('2', 2),('6',0)])),
               ('MINPAR',collections.OrderedDict([('1', 1000.),('2', 2000),('3',10),('4',1),('5',0)]))
 ])
-xslha.write(output,"/home/$USER/Documents/LH.in")
+xslha.write(out_blocks,"/home/$USER/Documents/LH.in")
 ```
 
