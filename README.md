@@ -21,21 +21,24 @@ One has afterwards access to the different information by using the ``Value`` co
 print("tan(beta): ",spc.Value('MINPAR',[3]))
 print("T_u(3,3): ",spc.Value('TU',[3,3]))
 print("m_h [GeV]: ",spc.Value('MASS',[25]))
-print("\Gamma(h) [GeV]: ",spc.Value('WIDTH',25))
+print("Gamma(h) [GeV]: ",spc.Value('WIDTH',25))
 print("BR(h->W^+W^-): ",spc.Value('BR',[25,[-13,13]]))
+print("Sigma(pp->N1 N1,Q=8TeV): ",spc.Value('XSECTION',[8000,(2212,2212),(1000021,1000021)]))
 ```
 produces the following output
 ```
 tan(beta):  16.870458
 T_u(3,3):  954.867627
 m_h [GeV]:  117.758677
-\\Gamma(h) [GeV]:  0.00324670136
+Gamma(h) [GeV]:  0.00324670136
 BR(h->W^+W^-):  0.000265688227
+Sigma(pp->N1 N1,Q=8TeV): [[(0, 2, 0, 0, 0, 0), 0.00496483158]]
 ```
 Thus, the conventions are:
 * for information given in the different SLHA blocks is returned by using using the name of the block as input as well as the numbers in the block as list
 * the widths of particles are returned via the keyword ``WIDHT`` and the pdg of the particle
 * for branching ratios, the keyword ``BR``is used together with a nested list which states the pdg of the decay particle as well as of the final states
+* for cross-sections the keyword ``XSECTION`` is used together with a nested list which states the center-of-mass energy and the pdgs of the initial/final states. The result is a list containing all calculated cross-sections for the given options for the renormalisation scheme, the QED & QCD order, etc. (see the SLHA recommendations for details). 
 
 Another possibility to access the information in the spectrum file is to look at the different dictionaries
 ```
