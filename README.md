@@ -63,7 +63,7 @@ to extract the input for a 2D-scatter plot.
 ## Fast read-in of many files
 Reading many spectrum files can be time consuming. However, many of the information which is given in a SLHA file is often not needed for a current study. Therefore, one can speed up the reading by extracting first all relevant information. This generates smaller files which are faster to read in. This can be done via the optional argument ``entries`` for ``read_dir``:
 ```
-list_spc_fast=xslha.read_dir("~/Documents/spc1000",entries=["# m0","# m12","# hh_1"])`
+list_spc_fast=xslha.read_dir("/home/$USER/Documents/spc1000",entries=["# m0","# m12","# hh_1"])`
 ```
 ``entries`` defines a list of strings which can be used to extract the necessary lines from the SLHA file by using ``grep``. The speed improvement can be easily an order of magnitude if only some entries from a SLHA file are actually needed.
 
@@ -71,7 +71,7 @@ list_spc_fast=xslha.read_dir("~/Documents/spc1000",entries=["# m0","# m12","# hh
 The impact of this optimisation for reading 10000 files is as follows:
 ```
 %%time
-list_spc=xslha.read_dir("~/Documents/spc1000")
+list_spc=xslha.read_dir("/home/$USER/Documents/spc1000")
 
 CPU times: user 5.05 s, sys: 105 ms, total: 5.15 s
 Wall time: 5.51 s
@@ -79,7 +79,7 @@ Wall time: 5.51 s
 compared to 
 ```
 %%time
-list_spc_fast=xslha.read_dir("~/Documents/spc1000",entries=["# m0","# m12","# hh_1"])
+list_spc_fast=xslha.read_dir("/home/$USER/Documents/spc1000",entries=["# m0","# m12","# hh_1"])
 
 CPU times: user 147 ms, sys: 132 ms, total: 280 ms
 Wall time: 917 ms
@@ -89,7 +89,7 @@ One can also compares this with other available python parser:
 ```
 %%time
 all_spc=[]
-for filename in os.listdir("~/Documents/spc1000/"): 
+for filename in os.listdir("/home/$USER/Documents/spc1000/"): 
   with open("~/Documents/spc1000/"+filename) as f:
     input=f.read()
     all_spc.append(pylha.load(input))
@@ -101,8 +101,8 @@ Wall time: 21.7 s
 ```
 %%time
 all_spc=[]
-for filename in os.listdir("~/Documents/spc1000/"): 
-    all_spc.append(pyslha.read(("~/Documents/spc1000/"+filename)))
+for filename in os.listdir("/home/$USER/Documents/spc1000/"): 
+    all_spc.append(pyslha.read(("/home/$USER/Documents/spc1000/"+filename)))
 
 CPU times: user 13.3 s, sys: 152 ms, total: 13.5 s
 Wall time: 13.5 s
@@ -129,5 +129,20 @@ There are some programs which use blocks that are not supported by the official 
 ```
 spc.Values('WIDTH1L',1000022)
 spc.Values('BR1L',[1000023,[25,1000022]])
+```
+
+## Writing files
+Files in the SLHA format can be written via
+```
+xslha.write(blocks,file)
+```
+where it might be the best to use ordered dictionaries to define the blocks and the values in the blocks. For instance 
+```
+import collections
+out_blocks=collections.OrderedDict([
+              ('MODSEL',collections.OrderedDict([('1', 1), ('2', 2),('6',0)])),
+              ('MINPAR',collections.OrderedDict([('1', 1000.),('2', 2000),('3',10),('4',1),('5',0)]))
+])
+xslha.write(output,"/home/$USER/Documents/LH.in")
 ```
 
