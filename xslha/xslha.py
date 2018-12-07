@@ -3,8 +3,11 @@ import os
 from six import string_types
 import numpy
 
+# SLHA parser
+# by Florian Staub (florian.staub@gmail.com)
+
 #----------------------------------------------------------
-#  SLHA reader class 
+# SLHA Class
 #----------------------------------------------------------
 
 class SLHA():
@@ -91,6 +94,11 @@ class SLHA():
          if self.reading_xsection:
             self.xsections[self.xs_head]=self.entries
 
+#----------------------------------------------------------
+# Reading
+#----------------------------------------------------------
+
+
 # now the main function to read the SLHA file
 def read(file,separator=None,verbose=False):
   spc = SLHA()
@@ -158,7 +166,7 @@ def read(file,separator=None,verbose=False):
   if separator is None:
         return spc
   else:
-        all_files.append(spc)
+        if len(spc.entries)>0: all_files.append(spc)
         return all_files
 
 
@@ -172,8 +180,8 @@ def read_small(file,entries,sep):
         string="--regexp=\""+sep+"\" --regexp=\"Block\" "
         for i in entries:
             string=string+"--regexp=\""+i+"\" "
-            subprocess.call("rm temp.spc",shell=True)
-            subprocess.call("cat "+file+" | grep -i "+string+" > temp_read_small.spc",shell=True)
+        subprocess.call("rm temp.spc",shell=True)
+        subprocess.call("cat "+file+" | grep -i "+string+" > temp_read_small.spc",shell=True)
         out=read("temp_read_small.spc",separator=sep)
         subprocess.call("rm temp_read_small.spc",shell=True)
 
@@ -223,8 +231,19 @@ def read_dir(dir,entries=None):
 
 
 #----------------------------------------------------------
-# Write Les Houches file
+# Writing
 #----------------------------------------------------------
+
+def write(blocks,file):
+    with open(file,'w+') as f:
+        for b in blocks:
+            write_block_head(b,f)
+            write_block_entries(blocks[b],f)
+
+def write_block_entries(values,file):
+       for v in values.keys():
+           file.write(' %s %10.4e # \n' % (v, float(values[v])))
+
 
 def write_les_houches(block,values,point,file):
         write_block_head(block,file)
