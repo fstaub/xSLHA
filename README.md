@@ -68,7 +68,7 @@ list_spc_fast=xslha.read_dir("/home/$USER/Documents/spc1000",entries=["# m0","# 
 ``entries`` defines a list of strings which can be used to extract the necessary lines from the SLHA file by using ``grep``. The speed improvement can be easily an order of magnitude if only some entries from a SLHA file are actually needed.
 
 ### Speed
-The impact of this optimisation for reading 10000 files is as follows:
+The impact of this optimisation for reading 1000 files is as follows:
 ```
 %%time
 list_spc=xslha.read_dir("/home/$USER/Documents/spc1000")
