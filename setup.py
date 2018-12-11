@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="xslha",
-    version="0.9.0",
+    version="1.0.0",
     author="Florian Staub",
     author_email="florian.staub@gmail.com",
     description="A python package to read (big/many) SLHA files",

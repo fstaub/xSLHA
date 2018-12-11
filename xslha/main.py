@@ -187,37 +187,6 @@ def read_small(file,entries,sep):
 
     return out
 
-# # read all files from a directory
-# def read_dir(dir,entries=None):
-#     subprocess.call("rm temp.spc",shell=True)
-#     if entries != None:
-#        string="--regexp=\""+"THEEND"+"\" --regexp=\"Block\" "
-#        for i in entries:
-#            string=string+"--regexp=\""+i+"\" "
-#
-#     for filename in os.listdir(dir):
-#         # print(dir+filename)
-#         if entries != None:
-#             subprocess.call("cat "+dir+"/"+filename+" | grep "+string+" >> temp.spc",shell=True)
-#         else:
-#             subprocess.call("cat "+dir+"/"+filename+" >> temp.spc",shell=True)
-#         subprocess.call("echo \"THEEND\" >> temp.spc",shell=True)
-#     out=read("temp.spc",separator="THEEND")
-#     subprocess.call("rm temp.spc",shell=True)
-#     return out
-
-#
-# def read_dir_list(dir,entries):
-#      subprocess.call("rm temp.spc",shell=True)
-#      string=""
-#      for i in entries:
-#          string=string+"--regexp=\""+i+"\" "
-#
-#      for filename in os.listdir(dir):
-#         subprocess.call("cat "+dir+"/"+filename+" | grep "+string+" |  sed  -ne 's/.*[ ]*\\([0-9]\\.[0-9eE\\+\\-]*\\)[ ]*.*/\\1/p' | sed -e ':a;N;$!ba;s/\\n/,/g' >> temp.spc",shell=True)
-#
-#      return numpy.loadtxt("temp.spc", delimiter=',')
-
 
 def read_dir(dir,entries=None):
     subprocess.call("rm temp_read_dir.spc",shell=True)
@@ -247,15 +216,17 @@ def write_block_entries(values,file):
 
 def write_les_houches(block,values,point,file):
         write_block_head(block,file)
-        write_block_numbers(values,point,file)
+        write_block_numbers(block,values,point,file)
 
 def write_block_head(name,file):
         file.write("Block "+name.upper()+" # \n")
 
-def write_block_numbers(values,Variable,file):
+def write_block_numbers(name,values,Variable,file):
        for v in values.keys():
         # if type(values[v]) is string_types:
          if isinstance(values[v], string_types): # to be 2 and 3 compatible
-           file.write(' %s %10.4e # \n' % (v,  float(eval(values[v]))))
+           file.write(' %s %10.4e # %s \n' % (v,  float(eval(values[v])),name.upper()+"["+str(v)+"]"))
+         elif isinstance(values[v], int):
+            file.write(' %s %i # %s \n' % (v, (values[v]),name.upper()+"["+str(v)+"]"))
          else:
-           file.write(' %s %10.4e # \n' % (v, float(values[v])))
+           file.write(' %s %10.4e # %s \n' % (v, float(values[v]),name.upper()+"["+str(v)+"]"))
