@@ -110,7 +110,7 @@ def read(file,separator=None,verbose=False):
     for line in infile:
        li=line.strip().upper()
 
-       if li.startswith("#"):
+       if li.startswith("#") or len(li)<1:
           continue
 
        if separator is not None:
@@ -180,7 +180,8 @@ def read_small(file,entries,sep):
         string="--regexp=\""+sep+"\" --regexp=\"Block\" "
         for i in entries:
             string=string+"--regexp=\""+i+"\" "
-        subprocess.call("rm temp.spc",shell=True)
+        if os.path.isfile("temp.spc"):    
+            subprocess.call("rm temp.spc",shell=True)
         subprocess.call("cat "+file+" | grep -i "+string+" > temp_read_small.spc",shell=True)
         out=read("temp_read_small.spc",separator=sep)
         subprocess.call("rm temp_read_small.spc",shell=True)
@@ -189,12 +190,31 @@ def read_small(file,entries,sep):
 
 
 def read_dir(dir,entries=None):
-    subprocess.call("rm temp_read_dir.spc",shell=True)
-    subprocess.check_call("cat "+dir+"/* > temp_read_dir.spc",shell=True)
+    if os.path.isfile("temp_read_dir.spc"):
+        subprocess.call("rm temp_read_dir.spc",shell=True)
+#    subprocess.check_call("cat "+dir+"/* > temp_read_dir.spc",shell=True)
+    subprocess.check_call("tail -n+1 "+dir+"/* > temp_read_dir.spc",shell=True)
     out=read_small("temp_read_dir.spc",entries,"BLOCK SPINFO")
     subprocess.call("rm temp_read_dir.spc",shell=True)
 
     return out
+
+#def read_dir(dir,entries=None):
+    #subprocess.call("rm temp_read_dir.spc",shell=True)
+    #subprocess.check_call("cat "+dir+"/* > temp_read_dir.spc",shell=True)
+    #with open("temp_read_dir.spc") as infile:
+     #for line in infile:
+       #li=line.strip().upper()
+       #if li.startswith("#") or len(li)<1:
+          #continue
+       #else:
+          #file_sep=li[:li.index("#")] 
+          #break  
+    #out=read_small("temp_read_dir.spc",entries,file_sep)
+    #subprocess.call("rm temp_read_dir.spc",shell=True)
+
+    #return out
+
 
 
 
