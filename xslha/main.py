@@ -1,201 +1,204 @@
 import subprocess
 import os
 from six import string_types
-import numpy
+
 
 # SLHA parser
 # by Florian Staub (florian.staub@gmail.com)
 
-#----------------------------------------------------------
+# ----------------------------------------------------------
 # SLHA Class
-#----------------------------------------------------------
+# ----------------------------------------------------------
+
 
 class SLHA():
     def __init__(self):
-      self.blocks={}
-      self.br={}
-      self.widths={}
-      self.br1L={}
-      self.widths1L={}
-      self.xsections={}
+        self.blocks = {}
+        self.br = {}
+        self.widths = {}
+        self.br1L = {}
+        self.widths1L = {}
+        self.xsections = {}
 
-      self.block_name=None
-      self.entries={}
-      self.reading_block=False
-      self.reading_decay=False
-      self.reading_xsection=False
-      self.reading_hb_fermion=False
-      self.reading_hb_boson=False
-      self.decay1L=False
-      self.decay_part=0
+        self.block_name = None
+        self.entries = {}
+        self.reading_block = False
+        self.reading_decay = False
+        self.reading_xsection = False
+        self.reading_hb_fermion = False
+        self.reading_hb_boson = False
+        self.decay1L = False
+        self.decay_part = 0
 
     # return wdith and BR
-    def BR(self,init,final):
-      # frozenset: make sure that the final states are order-less
-      return self.br[init][tuple(sorted(final))]
+    def BR(self, init, final):
+        # frozenset: make sure that the final states are order-less
+        return self.br[init][tuple(sorted(final))]
 
-    def Width(self,pdg):
-      return self.widths[pdg]
+    def Width(self, pdg):
+        return self.widths[pdg]
 
+    def Value(self, block, number):
+        '''return value of a parameter defined by block and entry
+            or the width or an BR'''
+        if block == 'WIDTH':
+            return self.widths[number]
+        elif block == 'BR':
+            return self.br[number[0]][tuple(sorted(number[1]))]
+        elif block == 'WIDTH1L':
+            return self.widths1L[number]
+        elif block == 'BR1L':
+            return self.br1L[number[0]][tuple(sorted(number[1]))]
+        elif block == 'XSECTION':
+            xs = self.xsections[tuple(number)]
+            return [[x, xs[x]] for x in xs.keys()]
+        else:
+            return self.blocks[block.upper()][str(number)[1:-1].replace(" ", "")]
 
-    # return value of a parameter defined by block and entry or the width or an BR
-    def Value(self,block,number):
-      if block == 'WIDTH':
-        return self.widths[number]
-      elif block == 'BR':
-        return self.br[number[0]][tuple(sorted(number[1]))]
-      elif block == 'WIDTH1L':
-        return self.widths1L[number]
-      elif block == 'BR1L':
-        return self.br1L[number[0]][tuple(sorted(number[1]))]
-      elif block == 'XSECTION':
-        xs=self.xsections[tuple(number)]
-        return [[x,xs[x]] for x in xs.keys()]
-      else:
-        return self.blocks[block.upper()][str(number)[1:-1].replace(" ", "")]
+    def start_decay(self, li):
+        parsed = list(filter(None, li.split(' ')))
+        self.decay1L = li.upper().startswith("DECAY1L")
+        self.decay_part = int(parsed[1])
+        if self.decay1L:
+            self.widths1L[self.decay_part] = float(parsed[2])
+        else:
+            self.widths[self.decay_part] = float(parsed[2])
+        self.entries = {}
+        self.reading_block, self.reading_decay, self.reading_xsection = False, True, False
 
-    def start_decay(self,li):
-      parsed=list(filter(None,li.split(' ')))
-      self.decay1L = li.upper().startswith("DECAY1L")
-      self.decay_part=int(parsed[1])
-      if self.decay1L:
-         self.widths1L[self.decay_part]=float(parsed[2])
-      else:
-         self.widths[self.decay_part]=float(parsed[2])
-      self.entries={}
-      self.reading_block, self.reading_decay,self.reading_xsection = False, True, False
+    def start_block(self, li):
+        self.block_name = (list(filter(None, li.split(' ')))[1]).upper()
+        self.entries = {}
+        self.reading_block, self.reading_decay, self.reading_xsection = True, False, False
+        self.reading_hb_boson = self.block_name == "HIGGSBOUNDSINPUTHIGGSCOUPLINGSBOSONS"
+        self.reading_hb_fermion = self.block_name =="HIGGSBOUNDSINPUTHIGGSCOUPLINGSFERMIONS"
 
+    def start_xsection(self, li):
+        parsed = list(filter(None, li.split(' ')))
+        if "#" in parsed:
+            parsed = parsed[:parsed.index("#")]  # remove comments
+        self.xs_head = tuple([float(parsed[1]), tuple([int(parsed[2]),
+            int(parsed[3])]), tuple([int(parsed[-2]), int(parsed[-1])])])
+        self.entries = {}
+        self.reading_block, self.reading_decay, self.reading_xsection = False, False, True
 
-    def start_block(self,li):
-      self.block_name=(list(filter(None,li.split(' ')))[1]).upper()
-      self.entries={}
-      self.reading_block, self.reading_decay,self.reading_xsection = True, False, False
-      self.reading_hb_boson = self.block_name == "HIGGSBOUNDSINPUTHIGGSCOUPLINGSBOSONS"
-      self.reading_hb_fermion = self.block_name =="HIGGSBOUNDSINPUTHIGGSCOUPLINGSFERMIONS"
-
-    def start_xsection(self,li):
-          parsed=list(filter(None,li.split(' ')))
-          if "#" in parsed: parsed=parsed[:parsed.index("#")] # remove comments
-          self.xs_head = tuple([float(parsed[1]),tuple([int(parsed[2]),int(parsed[3])]),tuple([int(parsed[-2]),int(parsed[-1])])])
-          self.entries={}
-          self.reading_block, self.reading_decay,self.reading_xsection = False, False, True
-
-
-    # store the information once a block is completely parsed
     def flush(self):
-        if len(self.entries)>0:
-         if self.reading_block:
-            self.blocks[self.block_name]=self.entries
-         if self.reading_decay:
-            if self.decay1L:
-                self.br1L[self.decay_part]=self.entries
-            else:
-                self.br[self.decay_part]=self.entries
-         if self.reading_xsection:
-            self.xsections[self.xs_head]=self.entries
+        '''store the information once a block is completely parsed'''
+        if len(self.entries) > 0:
+            if self.reading_block:
+                self.blocks[self.block_name] = self.entries
+            if self.reading_decay:
+                if self.decay1L:
+                    self.br1L[self.decay_part] = self.entries
+                else:
+                    self.br[self.decay_part] = self.entries
+            if self.reading_xsection:
+                self.xsections[self.xs_head] = self.entries
 
-#----------------------------------------------------------
+# ----------------------------------------------------------
 # Reading
-#----------------------------------------------------------
+# ----------------------------------------------------------
 
 
 # now the main function to read the SLHA file
-def read(file,separator=None,verbose=False):
-  spc = SLHA()
-  if separator is not None:
-        all_files=[]
-        count=1
+def read(file, separator=None, verbose=False):
+    spc = SLHA()
+    if separator is not None:
+        all_files = []
+        count = 1
 
-  with open(file) as infile:
-    for line in infile:
-       li=line.strip().upper()
+    with open(file) as infile:
+        for line in infile:
+            li = line.strip().upper()
 
-       if li.startswith("#") or len(li)<1:
-          continue
-
-       if separator is not None:
-            if li.startswith(separator):
-                spc.flush()
-                if len(spc.blocks.keys())>0 or len(spc.widths.keys())>0:
-                  all_files.append(spc)
-
-                # start next point
-                spc = SLHA()
-                count=count+1
-                if verbose: print("Read spc file:",count)
+            if li.startswith("#") or len(li) < 1:
                 continue
 
-       # New block started
-       if li.startswith("BLOCK"):
-            spc.flush() # store information which was read
-            spc.start_block(li)
-       elif li.startswith("DECAY"):
-            spc.flush() # store information which was read
-            spc.start_decay(li)
-       elif li.startswith("XSECTION"):
-                    spc.flush() # store information which was read
-                    spc.start_xsection(li)
+            if separator is not None:
+                if li.startswith(separator):
+                    spc.flush()
+                    if len(spc.blocks.keys()) > 0 or len(spc.widths.keys()) > 0:
+                        all_files.append(spc)
+                        # start next point
+                        spc = SLHA()
+                        count = count+1
+                        if verbose:
+                            print("Read spc file:", count)
+                        continue
 
-          # Reading and parsing values
-       else:
-            parsed=list(filter(None,li.split(' ')))
-            if "#" in parsed: parsed=parsed[:parsed.index("#")] # remove comments
-            if spc.reading_block:
-              if spc.reading_hb_fermion:
-                 spc.entries[",".join(parsed[3:])]=[float(parsed[0]),float(parsed[1])]
-              elif spc.reading_hb_boson:
-                 spc.entries[",".join(parsed[2:])]=float(parsed[0])
-              else:
-                 # Value might be a string like in SPINFO block
-                 try:
-                     value=float(parsed[-1])
-                 except:
-                      value=parsed[-2]
-                 spc.entries[",".join(parsed[0:-1])]=value
+            # New block started
+            if li.startswith("BLOCK"):
+                spc.flush()  # store information which was read
+                spc.start_block(li)
+            elif li.startswith("DECAY"):
+                spc.flush()  # store information which was read
+                spc.start_decay(li)
+            elif li.startswith("XSECTION"):
+                spc.flush()  # store information which was read
+                spc.start_xsection(li)
 
-            if spc.reading_decay:
-                spc.entries[tuple(sorted(eval("["+",".join(parsed[2:])+"]")))]=float(parsed[0])
+            # Reading and parsing values
+            else:
+                parsed = list(filter(None, li.split(' ')))
+                if "#" in parsed:
+                    parsed = parsed[:parsed.index("#")]  # remove comments
+                if spc.reading_block:
+                    if spc.reading_hb_fermion:
+                        spc.entries[",".join(parsed[3:])] = [float(parsed[0]), float(parsed[1])]
+                    elif spc.reading_hb_boson:
+                        spc.entries[",".join(parsed[2:])] = float(parsed[0])
+                    else:
+                        # Value might be a string like in SPINFO block
+                        try:
+                            value = float(parsed[-1])
+                        except:
+                            value = parsed[-2]
+                        spc.entries[",".join(parsed[0:-1])] = value
 
-            if spc.reading_xsection:
-                spc.entries[tuple(eval("["+",".join(parsed[0:-2])+"]"))]=float(parsed[-2])
+                if spc.reading_decay:
+                    spc.entries[tuple(sorted(eval("["+",".join(parsed[2:])+"]")))] = float(parsed[0])
 
-  spc.flush()  # save the very last block in the file
+                if spc.reading_xsection:
+                     spc.entries[tuple(eval("["+",".join(parsed[0:-2])+"]"))] = float(parsed[-2])
 
-  if verbose:
-        print("Read %i blocks and %i decays" % (len(spc.blocks),len(spc.br)))
-  if separator is None:
+    spc.flush()  # save the very last block in the file
+
+    if verbose:
+        print("Read %i blocks and %i decays" % (len(spc.blocks), len(spc.br)))
+    if separator is None:
         return spc
-  else:
-        if len(spc.entries)>0: all_files.append(spc)
+    else:
+        if len(spc.entries) > 0:
+            all_files.append(spc)
         return all_files
 
 
 # wrapper for faster read-in of multiple files
 # squeeze the file (just keeping the necessary entries) to make the reading more efficient
 # example: read_small_spc(filename,["# m0","# m12","# relic"],separator="ENDOF")
-def read_small(file,entries,sep):
-    if entries==None:
-        out=read(file,separator=sep)
+def read_small(file, entries, sep):
+    if entries is None:
+        out = read(file, separator=sep)
     else:
-        string="--regexp=\""+sep+"\" --regexp=\"Block\" "
+        string = "--regexp=\""+sep+"\" --regexp=\"Block\" "
         for i in entries:
-            string=string+"--regexp=\""+i+"\" "
-        if os.path.isfile("temp.spc"):    
-            subprocess.call("rm temp.spc",shell=True)
-        subprocess.call("cat "+file+" | grep -i "+string+" > temp_read_small.spc",shell=True)
-        out=read("temp_read_small.spc",separator=sep)
-        subprocess.call("rm temp_read_small.spc",shell=True)
+            string = string+"--regexp=\""+i+"\" "
+        if os.path.isfile("temp.spc"):
+            subprocess.call("rm temp.spc", shell=True)
+        subprocess.call("cat "+file+" | grep -i "+string+" > temp_read_small.spc", shell=True)
+        out = read("temp_read_small.spc", separator=sep)
+        subprocess.call("rm temp_read_small.spc", shell=True)
 
     return out
 
 
-def read_dir(dir,entries=None):
+def read_dir(dir, entries=None):
     if os.path.isfile("temp_read_dir.spc"):
-        subprocess.call("rm temp_read_dir.spc",shell=True)
+        subprocess.call("rm temp_read_dir.spc", shell=True)
 #    subprocess.check_call("cat "+dir+"/* > temp_read_dir.spc",shell=True)
-    subprocess.check_call("tail -n+1 "+dir+"/* > temp_read_dir.spc",shell=True)
-    out=read_small("temp_read_dir.spc",entries,"BLOCK SPINFO")
-    subprocess.call("rm temp_read_dir.spc",shell=True)
+    subprocess.check_call("tail -n+1 "+dir+"/* > temp_read_dir.spc", shell=True)
+    out = read_small("temp_read_dir.spc", entries, "==>")
+    subprocess.call("rm temp_read_dir.spc", shell=True)
 
     return out
 
@@ -208,45 +211,45 @@ def read_dir(dir,entries=None):
        #if li.startswith("#") or len(li)<1:
           #continue
        #else:
-          #file_sep=li[:li.index("#")] 
-          #break  
+          #file_sep=li[:li.index("#")]
+          #break
     #out=read_small("temp_read_dir.spc",entries,file_sep)
     #subprocess.call("rm temp_read_dir.spc",shell=True)
 
     #return out
 
-
-
-
-
-#----------------------------------------------------------
+# ----------------------------------------------------------
 # Writing
-#----------------------------------------------------------
+# ----------------------------------------------------------
 
-def write(blocks,file):
-    with open(file,'w+') as f:
+
+def write(blocks, file):
+    with open(file, 'w+') as f:
         for b in blocks:
-            write_block_head(b,f)
-            write_block_entries(blocks[b],f)
-
-def write_block_entries(values,file):
-       for v in values.keys():
-           file.write(' %s %10.4e # \n' % (v, float(values[v])))
+            write_block_head(b, f)
+            write_block_entries(blocks[b], f)
 
 
-def write_les_houches(block,values,point,file):
-        write_block_head(block,file)
-        write_block_numbers(block,values,point,file)
+def write_block_entries(values, file):
+    for v in values.keys():
+        file.write(' %s %10.4e # \n' % (v, float(values[v])))
 
-def write_block_head(name,file):
-        file.write("Block "+name.upper()+" # \n")
 
-def write_block_numbers(name,values,Variable,file):
-       for v in values.keys():
+def write_les_houches(block, values, point, file):
+    write_block_head(block, file)
+    write_block_numbers(block, values, point, file)
+
+
+def write_block_head(name, file):
+    file.write("Block "+name.upper()+" # \n")
+
+
+def write_block_numbers(name, values, Variable, file):
+    for v in values.keys():
         # if type(values[v]) is string_types:
-         if isinstance(values[v], string_types): # to be 2 and 3 compatible
-           file.write(' %s %10.4e # %s \n' % (v,  float(eval(values[v])),name.upper()+"["+str(v)+"]"))
-         elif isinstance(values[v], int):
+        if isinstance(values[v], string_types):  # to be 2 and 3 compatible
+            file.write(' %s %10.4e # %s \n'% (v,  float(eval(values[v])), name.upper()+"["+str(v)+"]"))
+        elif isinstance(values[v], int):
             file.write(' %s %i # %s \n' % (v, (values[v]),name.upper()+"["+str(v)+"]"))
-         else:
+        else:
            file.write(' %s %10.4e # %s \n' % (v, float(values[v]),name.upper()+"["+str(v)+"]"))
