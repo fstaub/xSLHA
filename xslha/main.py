@@ -53,7 +53,8 @@ class SLHA():
             xs = self.xsections[tuple(number)]
             return [[x, xs[x]] for x in xs.keys()]
         else:
-            return self.blocks[block.upper()][str(number)[1:-1].replace(" ", "")]
+            return self.blocks[block.upper()][
+                str(number)[1:-1].replace(" ", "")]
 
     def start_decay(self, li):
         parsed = list(filter(None, li.split(' ')))
@@ -64,23 +65,33 @@ class SLHA():
         else:
             self.widths[self.decay_part] = float(parsed[2])
         self.entries = {}
-        self.reading_block, self.reading_decay, self.reading_xsection = False, True, False
+        self.reading_block, self.reading_decay, self.reading_xsection \
+            = False, True, False
 
     def start_block(self, li):
         self.block_name = (list(filter(None, li.split(' ')))[1]).upper()
         self.entries = {}
-        self.reading_block, self.reading_decay, self.reading_xsection = True, False, False
-        self.reading_hb_boson = self.block_name == "HIGGSBOUNDSINPUTHIGGSCOUPLINGSBOSONS"
-        self.reading_hb_fermion = self.block_name =="HIGGSBOUNDSINPUTHIGGSCOUPLINGSFERMIONS"
+        self.reading_block, self.reading_decay, self.reading_xsection \
+            = True, False, False
+        self.reading_hb_boson = \
+            self.block_name in ["HIGGSBOUNDSINPUTHIGGSCOUPLINGSBOSONS",
+                                "HIGGSCOUPLINGSBOSONS"]
+        self.reading_hb_fermion = \
+            self.block_name in ["HIGGSBOUNDSINPUTHIGGSCOUPLINGSFERMIONS",
+                                "HIGGSCOUPLINGSFERMIONS"]
 
     def start_xsection(self, li):
         parsed = list(filter(None, li.split(' ')))
         if "#" in parsed:
             parsed = parsed[:parsed.index("#")]  # remove comments
-        self.xs_head = tuple([float(parsed[1]), tuple([int(parsed[2]),
-            int(parsed[3])]), tuple([int(parsed[-2]), int(parsed[-1])])])
+        self.xs_head = tuple(
+            [float(parsed[1]),
+             tuple([int(parsed[2]), int(parsed[3])]),
+             tuple([int(parsed[-2]), int(parsed[-1])])
+             ])
         self.entries = {}
-        self.reading_block, self.reading_decay, self.reading_xsection = False, False, True
+        self.reading_block, self.reading_decay, self.reading_xsection \
+            = False, False, True
 
     def flush(self):
         '''store the information once a block is completely parsed'''
@@ -117,11 +128,11 @@ def read(file, separator=None, verbose=False):
             if separator is not None:
                 if li.startswith(separator):
                     spc.flush()
-                    if len(spc.blocks.keys()) > 0 or len(spc.widths.keys()) > 0:
+                    if max(len(spc.blocks.keys()),len(spc.widths.keys())) > 0:
                         all_files.append(spc)
                         # start next point
                         spc = SLHA()
-                        count = count+1
+                        count = count + 1
                         if verbose:
                             print("Read spc file:", count)
                         continue
@@ -144,9 +155,11 @@ def read(file, separator=None, verbose=False):
                     parsed = parsed[:parsed.index("#")]  # remove comments
                 if spc.reading_block:
                     if spc.reading_hb_fermion:
-                        spc.entries[",".join(parsed[3:])] = [float(parsed[0]), float(parsed[1])]
+                        spc.entries[",".join(parsed[3:])] = \
+                            [float(parsed[0]), float(parsed[1])]
                     elif spc.reading_hb_boson:
-                        spc.entries[",".join(parsed[2:])] = float(parsed[0])
+                        spc.entries[",".join(parsed[2:])] = \
+                            float(parsed[0])
                     else:
                         # Value might be a string like in SPINFO block
                         try:
@@ -156,10 +169,14 @@ def read(file, separator=None, verbose=False):
                         spc.entries[",".join(parsed[0:-1])] = value
 
                 if spc.reading_decay:
-                    spc.entries[tuple(sorted(eval("["+",".join(parsed[2:])+"]")))] = float(parsed[0])
+                    spc.entries[
+                        tuple(sorted(eval("[" + ",".join(parsed[2:]) + "]")))
+                    ] = float(parsed[0])
 
                 if spc.reading_xsection:
-                     spc.entries[tuple(eval("["+",".join(parsed[0:-2])+"]"))] = float(parsed[-2])
+                    spc.entries[
+                        tuple(eval("[" + ",".join(parsed[0:-2]) + "]"))
+                    ] = float(parsed[-2])
 
     spc.flush()  # save the very last block in the file
 
@@ -180,12 +197,13 @@ def read_small(file, entries, sep):
     if entries is None:
         out = read(file, separator=sep)
     else:
-        string = "--regexp=\""+sep+"\" --regexp=\"Block\" "
+        string = "--regexp=\"" + sep + "\" --regexp=\"Block\" "
         for i in entries:
-            string = string+"--regexp=\""+i+"\" "
+            string = string + "--regexp=\"" + i + "\" "
         if os.path.isfile("temp.spc"):
             subprocess.call("rm temp.spc", shell=True)
-        subprocess.call("cat "+file+" | grep -i "+string+" > temp_read_small.spc", shell=True)
+        subprocess.call("cat " + file + " | grep -i " + string
+                        + " > temp_read_small.spc", shell=True)
         out = read("temp_read_small.spc", separator=sep)
         subprocess.call("rm temp_read_small.spc", shell=True)
 
@@ -196,7 +214,8 @@ def read_dir(dir, entries=None):
     if os.path.isfile("temp_read_dir.spc"):
         subprocess.call("rm temp_read_dir.spc", shell=True)
 #    subprocess.check_call("cat "+dir+"/* > temp_read_dir.spc",shell=True)
-    subprocess.check_call("tail -n+1 "+dir+"/* > temp_read_dir.spc", shell=True)
+    subprocess.check_call("tail -n+1 " + dir + "/* > temp_read_dir.spc",
+                          shell=True)
     out = read_small("temp_read_dir.spc", entries, "==>")
     subprocess.call("rm temp_read_dir.spc", shell=True)
 
@@ -241,15 +260,25 @@ def write_les_houches(block, values, point, file):
 
 
 def write_block_head(name, file):
-    file.write("Block "+name.upper()+" # \n")
+    file.write("Block " + name.upper() + " # \n")
 
 
 def write_block_numbers(name, values, Variable, file):
     for v in values.keys():
         # if type(values[v]) is string_types:
         if isinstance(values[v], string_types):  # to be 2 and 3 compatible
-            file.write(' %s %10.4e # %s \n'% (v,  float(eval(values[v])), name.upper()+"["+str(v)+"]"))
+            if str(eval(values[v]))==values[v]:
+                file.write(' %s %s # %s \n'
+                           % (v, values[v],
+                              name.upper() + "[" + str(v) + "]"))
+            else:    
+                file.write(' %s %10.4e # %s \n'
+                           % (v, float(eval(values[v])),
+                              name.upper() + "[" + str(v) + "]"))
         elif isinstance(values[v], int):
-            file.write(' %s %i # %s \n' % (v, (values[v]),name.upper()+"["+str(v)+"]"))
+            file.write(' %s %i # %s \n'
+                       % (v, (values[v]), name.upper() + "[" + str(v) + "]"))
         else:
-           file.write(' %s %10.4e # %s \n' % (v, float(values[v]),name.upper()+"["+str(v)+"]"))
+            file.write(' %s %10.4e # %s \n'
+                       % (v, float(values[v]),
+                          name.upper() + "[" + str(v) + "]"))
